@@ -1,0 +1,35 @@
+{
+	"name": "gleapadmin",
+	"version": "0.0.0",
+	"description": "Gleap Admin SDK for node.js",
+	"license": "MIT",
+	"repository": "https://github.com/GleapSDK/AdminNode",
+	"author": {
+		"name": "Gleap GmbH",
+		"email": "hello@gleap.io",
+		"url": "https://gleap.io"
+	},
+	"type": "module",
+	"exports": "./index.js",
+	"engines": {
+		"node": ">=14.16"
+	},
+	"scripts": {
+		"test": "xo && ava"
+	},
+	"files": [
+		"index.js"
+	],
+	"keywords": [
+		"gleap",
+		"bug reporting",
+		"customer feedback",
+		"event tracking",
+		"surveys"
+	],
+	"dependencies": {},
+	"devDependencies": {
+		"ava": "^4.3.1",
+		"xo": "^0.51.0"
+	}
+}

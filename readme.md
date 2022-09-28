@@ -1,65 +1,48 @@
-# node-module-boilerplate
+# typescript-module-boilerplate
 
-> Boilerplate to kickstart creating a Node.js module
+This is a boilerplate module for a project that uses TypeScript as its main language. To use this boilerplate, clone, delete `.git` folder and begin your own. Maybe delete a few other extra files as necessary.
 
-This is what I use for [my own modules](https://www.npmjs.com/~sindresorhus).
+## Stack Description
 
-Also check out [`node-cli-boilerplate`](https://github.com/sindresorhus/node-cli-boilerplate).
-
-## Getting started
-
-**Click the "Use this template" button.**
-
-Alternatively, create a new directory and then run:
-
-```sh
-curl -fsSL https://github.com/sindresorhus/node-module-boilerplate/archive/main.tar.gz | tar -xz --strip-components=1
-```
-
-There's also a [Yeoman generator](https://github.com/sindresorhus/generator-nm).
-
----
-
-**Remove everything from here and above**
-
----
-
-# unicorn-fun
-
-> My awesome module
-
-## Install
-
-```sh
-npm install unicorn-fun
-```
+* TypeScript
+* Jest
+* Prettier
+* ESLint
 
 ## Usage
 
-```js
-import unicornFun from 'unicorn-fun';
-
-unicornFun('unicorns');
-//=> 'unicorns & rainbows'
+```bash
+$ git clone https://github.com/alexgorbatchev/typescript-module-boilerplate.git
+$ cd typescript-module-boilerplate
+$ rm -fr .git
+$ yarn
+$ yarn test
 ```
 
-## API
+## Features
 
-### unicornFun(input, options?)
+![](./screenshot-eslint.png)
 
-#### input
+* Linting via [ESLint](http://eslint.org/).
+  * Run manually via `yarn lint`.
+  * Integrates with Visual Studio Code via [vscode-eslint](https://github.com/Microsoft/vscode-eslint/).
+    * Highlights type & linting issues.
+    * Provides debuging options for running Jest tests (once and in watch mode).
+  * Uses [AirBNB ESLint plugin](https://github.com/airbnb/javascript) as sane defaults.
+  * `import ... from ...` statements are verified for correctness via [eslint-plugin-import](https://github.com/benmosher/eslint-plugin-import).
+* Formatting via [Prettier](https://github.com/prettier/prettier).
+  * Run manually via `yarn format`.
+  * Integrates well with Visual Studio Code via [prettier-vscode](https://github.com/prettier/prettier-vscode).
+    * Automatically formats on save.
 
-Type: `string`
+## Script Commands
 
-Lorem ipsum.
+* `yarn test` -- Runs tests.
+* `yarn typecheck` -- Checks TypeScript types for correctness. This is disabled during tests for performance reasons.
+* `yarn lint` -- Runs linting.
+* `yarn format` -- Reformats all of the `.ts` and `.tsx` files with Prettier.
+* `yarn build` -- Regenerates `dist` folder that gets included into NPM module.
 
-#### options
+## License
 
-Type: `object`
-
-##### postfix
-
-Type: `string`\
-Default: `'rainbows'`
-
-Lorem ipsum.
+MIT

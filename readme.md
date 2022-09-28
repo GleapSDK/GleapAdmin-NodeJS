@@ -1,47 +1,57 @@
-# typescript-module-boilerplate
+# Gleap Admin for NodeJS
 
-This is a boilerplate module for a project that uses TypeScript as its main language. To use this boilerplate, clone, delete `.git` folder and begin your own. Maybe delete a few other extra files as necessary.
+This package allows you to track customer events from the server side.
 
-## Stack Description
+## Installation
 
-* TypeScript
-* Jest
-* Prettier
-* ESLint
+```bash
+npm install gleap-admin --save
+```
 
 ## Usage
 
-```bash
-$ git clone https://github.com/alexgorbatchev/typescript-module-boilerplate.git
-$ cd typescript-module-boilerplate
-$ rm -fr .git
-$ yarn
-$ yarn test
+Import the GleapAdmin package.
+
+```js
+import GleapAdmin from 'gleap-admin';
 ```
 
-## Features
+### Initialize the SDK
 
-![](./screenshot-eslint.png)
+It is required to initialize the GleapAdmin SDK before sending events or other requests.
 
-* Linting via [ESLint](http://eslint.org/).
-  * Run manually via `yarn lint`.
-  * Integrates with Visual Studio Code via [vscode-eslint](https://github.com/Microsoft/vscode-eslint/).
-    * Highlights type & linting issues.
-    * Provides debuging options for running Jest tests (once and in watch mode).
-  * Uses [AirBNB ESLint plugin](https://github.com/airbnb/javascript) as sane defaults.
-  * `import ... from ...` statements are verified for correctness via [eslint-plugin-import](https://github.com/benmosher/eslint-plugin-import).
-* Formatting via [Prettier](https://github.com/prettier/prettier).
-  * Run manually via `yarn format`.
-  * Integrates well with Visual Studio Code via [prettier-vscode](https://github.com/prettier/prettier-vscode).
-    * Automatically formats on save.
+```js
+GleapAdmin.initialize('secret-api-token');
+```
 
-## Script Commands
+The secret api token can be found within your project settings -> API.
 
-* `yarn test` -- Runs tests.
-* `yarn typecheck` -- Checks TypeScript types for correctness. This is disabled during tests for performance reasons.
-* `yarn lint` -- Runs linting.
-* `yarn format` -- Reformats all of the `.ts` and `.tsx` files with Prettier.
-* `yarn build` -- Regenerates `dist` folder that gets included into NPM module.
+### Track an event
+
+```js
+GleapAdmin.trackEvent('user-id', 'event-name', {
+  someEventData: "yeah!"
+});
+```
+
+The userId should match the userId you are using to identify your users.
+
+The event data (last param) is optional.
+
+### Identify an user
+
+```js
+GleapAdmin.identify('user-id', {
+  name: 'XOXO',
+  email: 'asdf@asf.de',
+  value: 1,
+  phone: '+4395959595',
+});
+```
+
+The userId should match the userId you are using to identify your users.
+
+All key-value pairs in the user properties part are optional.
 
 ## License
 

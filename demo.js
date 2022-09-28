@@ -15,17 +15,17 @@ const x = async () => {
 
     console.log('Now log events.');
 
-    await GleapAdmin.default.trackEvent('XOXO', 'test', {
+    GleapAdmin.default.trackEvent('XOXO', 'test', {
         value: 1,
         xo: 2,
     });
 
-    await GleapAdmin.default.trackEvent('XOXO', '4444', {
+    GleapAdmin.default.trackEvent('XOXO', '4444', {
         value: 1,
         xo: 2,
     });
 
-    await GleapAdmin.default.trackEvent('XOXO', 'asdfasdf', {
+    GleapAdmin.default.trackEvent('XOXO', 'asdfasdf', {
         value: 1,
         xo: 2,
     });

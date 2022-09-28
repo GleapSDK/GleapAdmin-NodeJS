@@ -9,6 +9,7 @@
     "build": "./scripts/build.sh",
     "prepublish": "npm run build"
   },
+  "homepage": "https://github.com/GleapSDK/GleapAdmin-NodeJS",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
   "license": "MIT",

@@ -1,35 +1,39 @@
 {
-	"name": "gleapadmin",
-	"version": "0.0.0",
-	"description": "Gleap Admin SDK for node.js",
-	"license": "MIT",
-	"repository": "https://github.com/GleapSDK/AdminNode",
-	"author": {
-		"name": "Gleap GmbH",
-		"email": "hello@gleap.io",
-		"url": "https://gleap.io"
-	},
-	"type": "module",
-	"exports": "./index.js",
-	"engines": {
-		"node": ">=14.16"
-	},
-	"scripts": {
-		"test": "xo && ava"
-	},
-	"files": [
-		"index.js"
-	],
-	"keywords": [
-		"gleap",
-		"bug reporting",
-		"customer feedback",
-		"event tracking",
-		"surveys"
-	],
-	"dependencies": {},
-	"devDependencies": {
-		"ava": "^4.3.1",
-		"xo": "^0.51.0"
-	}
+  "name": "gleap-admin",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "yarn jest --forceExit",
+    "typecheck": "yarn tsc --project ./tsconfig-typecheck.json",
+    "lint": "eslint 'src/**/*.{ts,tsx}'",
+    "format": "prettier --write 'src/**/*.{ts,tsx}'",
+    "build": "./scripts/build.sh",
+    "prepublish": "npm run build"
+  },
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "license": "MIT",
+  "files": [
+    "dist/"
+  ],
+  "devDependencies": {
+    "@types/jest": "^27.0.2",
+    "@types/node": "^16.11.6",
+    "@typescript-eslint/eslint-plugin": "^5.2.0",
+    "@typescript-eslint/parser": "^5.2.0",
+    "eslint": "^8.1.0",
+    "eslint-config-airbnb": "^18.1.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-config-typescript": "^3.0.0",
+    "eslint-formatter-pretty": "^4.1.0",
+    "eslint-plugin-import": "^2.25.2",
+    "eslint-plugin-jsx-a11y": "^6.0.2",
+    "eslint-plugin-prettier": "^4.0.0",
+    "eslint-plugin-typescript": "^0.14.0",
+    "jest": "^27.3.1",
+    "prettier": "^2.4.1",
+    "ts-jest": "^27.0.7",
+    "ts-node": "^10.4.0",
+    "typescript": "^4.4.4",
+    "typescript-eslint-parser": "^22.0.0"
+  }
 }

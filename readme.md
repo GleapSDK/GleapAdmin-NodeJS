@@ -1,65 +1,58 @@
-# node-module-boilerplate
+# Gleap Admin for NodeJS
 
-> Boilerplate to kickstart creating a Node.js module
+This package allows you to track customer events from the server side.
 
-This is what I use for [my own modules](https://www.npmjs.com/~sindresorhus).
+## Installation
 
-Also check out [`node-cli-boilerplate`](https://github.com/sindresorhus/node-cli-boilerplate).
-
-## Getting started
-
-**Click the "Use this template" button.**
-
-Alternatively, create a new directory and then run:
-
-```sh
-curl -fsSL https://github.com/sindresorhus/node-module-boilerplate/archive/main.tar.gz | tar -xz --strip-components=1
-```
-
-There's also a [Yeoman generator](https://github.com/sindresorhus/generator-nm).
-
----
-
-**Remove everything from here and above**
-
----
-
-# unicorn-fun
-
-> My awesome module
-
-## Install
-
-```sh
-npm install unicorn-fun
+```bash
+npm install gleap-admin --save
 ```
 
 ## Usage
 
-```js
-import unicornFun from 'unicorn-fun';
+Import the GleapAdmin package.
 
-unicornFun('unicorns');
-//=> 'unicorns & rainbows'
+```js
+import GleapAdmin from 'gleap-admin';
 ```
 
-## API
+### Initialize the SDK
 
-### unicornFun(input, options?)
+It is required to initialize the GleapAdmin SDK before sending events or other requests.
 
-#### input
+```js
+GleapAdmin.initialize('secret-api-token');
+```
 
-Type: `string`
+The secret api token can be found within your project settings -> API.
 
-Lorem ipsum.
+### Track an event
 
-#### options
+```js
+GleapAdmin.trackEvent('user-id', 'event-name', {
+  someEventData: "yeah!"
+});
+```
 
-Type: `object`
+The userId should match the userId you are using to identify your users.
 
-##### postfix
+The event data (last param) is optional.
 
-Type: `string`\
-Default: `'rainbows'`
+### Identify an user
 
-Lorem ipsum.
+```js
+GleapAdmin.identify('user-id', {
+  name: 'XOXO',
+  email: 'asdf@asf.de',
+  value: 1,
+  phone: '+4395959595',
+});
+```
+
+The userId should match the userId you are using to identify your users.
+
+All key-value pairs in the user properties part are optional.
+
+## License
+
+MIT

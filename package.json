@@ -1,6 +1,6 @@
 {
   "name": "gleap-admin",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "scripts": {
     "test": "yarn jest --forceExit",
     "typecheck": "yarn tsc --project ./tsconfig-typecheck.json",

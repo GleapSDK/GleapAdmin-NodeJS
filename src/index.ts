@@ -64,6 +64,7 @@ export class GleapAdmin {
 
 			await httpsPost({
 				hostname: this.apiUrl,
+				path: '/admin/identify',
 				headers: {
 					'Api-Token': `${this.apiToken}`,
 					'Content-Type': 'application/json',

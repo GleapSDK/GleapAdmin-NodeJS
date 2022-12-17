@@ -2,7 +2,7 @@
 /* eslint-disable prettier/prettier */
 const GleapAdmin = require('./dist/index');
 
-GleapAdmin.default.initialize('API_KEY');
+GleapAdmin.default.initialize('SECRET_API_KEY');
 
 // eslint-disable-next-line require-await
 const x = async () => {
@@ -11,6 +11,9 @@ const x = async () => {
         email: 'asdf@asf.de',
         value: 1,
         phone: '+4395959595',
+        customData: {
+            xoxo: 'xoxo',
+        },
     });
 
     console.log('Now log events.');

@@ -9,6 +9,7 @@ interface UserProperties {
 	email?: string;
 	value?: number;
 	phone?: string;
+	customData?: object;
 }
 
 interface Event {
@@ -62,6 +63,19 @@ export class GleapAdmin {
 				throw new TypeError('Please provide a valid user properties object.');
 			}
 
+			let dataToSend = {
+				...properties,
+			};
+
+			if (properties.customData) {
+				delete dataToSend.customData;
+
+				dataToSend = {
+					...dataToSend,
+					...properties.customData,
+				};
+			}
+
 			await httpsPost({
 				hostname: this.apiUrl,
 				path: '/admin/identify',
@@ -70,8 +84,8 @@ export class GleapAdmin {
 					'Content-Type': 'application/json',
 				},
 				body: JSON.stringify({
+					...dataToSend,
 					userId,
-					...properties,
 				}),
 			});
 

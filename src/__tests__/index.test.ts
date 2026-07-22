@@ -1,8 +1,3 @@
-/* eslint-disable no-console */
-/* eslint-disable @typescript-eslint/no-empty-function */
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable prettier/prettier */
-/* eslint-disable arrow-body-style */
 import { httpsPost } from '../httpclient';
 import GleapAdmin from '../index';
 

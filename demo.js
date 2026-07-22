@@ -1,36 +1,37 @@
-/* eslint-disable no-console */
-/* eslint-disable prettier/prettier */
-const GleapAdmin = require('./dist/index');
+const GleapAdmin = require('./dist/index').default;
 
-GleapAdmin.default.initialize('SECRET_API_KEY');
+GleapAdmin.initialize('SECRET_API_KEY');
 
-// eslint-disable-next-line require-await
-const x = async () => {
-    await GleapAdmin.default.identify('XOXO', {
-        name: 'XOXO',
-        email: 'asdf@asf.de',
-        value: 1,
-        phone: '+4395959595',
-        customData: {
-            xoxo: 'xoxo',
-        },
-    });
+const run = async () => {
+  // Identify a user and associate them with a company.
+  await GleapAdmin.identify('XOXO', {
+    name: 'John Doe',
+    email: 'john@doe.io',
+    value: 1,
+    phone: '+4395959595',
+    customData: {
+      plan: 'Growth plan',
+    },
+    company: {
+      id: 'acme-inc',
+      name: 'ACME inc.',
+    },
+  });
 
-    console.log('Now log events.');
+  // Set authoritative company attributes from the backend.
+  await GleapAdmin.updateCompany('acme-inc', {
+    name: 'ACME inc.',
+    plan: 'Growth plan',
+    value: 4990,
+    sla: 3600,
+  });
 
-    GleapAdmin.default.trackEvent('XOXO', 'test', {
-        value: 1,
-        xo: 2,
-    });
+  const company = await GleapAdmin.getCompany('acme-inc');
+  console.log('Loaded company:', company);
 
-    GleapAdmin.default.trackEvent('XOXO', '4444', {
-        value: 1,
-        xo: 2,
-    });
-
-    GleapAdmin.default.trackEvent('XOXO', 'asdfasdf', {
-        value: 1,
-        xo: 2,
-    });
+  // Track a couple of events.
+  GleapAdmin.trackEvent('XOXO', 'Subscription started', { value: 1200 });
+  GleapAdmin.trackEvent('XOXO', 'Feature used', { name: 'export' });
 };
-x();
+
+run();

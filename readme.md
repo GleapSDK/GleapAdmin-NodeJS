@@ -46,12 +46,44 @@ GleapAdmin.identify('user-id', {
   email: 'asdf@asf.de',
   value: 1,
   phone: '+4395959595',
+  // Optional: associate the user with a company.
+  company: {
+    id: 'acme-inc',
+    name: 'ACME inc.',
+  },
 });
 ```
 
 The userId should match the userId you are using to identify your users.
 
-All key-value pairs in the user properties part are optional.
+All key-value pairs in the user properties part are optional. The optional
+`company` object associates the user with a company — only `company.id` is
+required and `company.name` never overwrites a name set via `updateCompany`.
+
+### Companies
+
+Set authoritative company attributes (plan, value, SLA, address, custom data)
+from your backend. These are shown in the dashboard and used for company-level
+SLAs, and are never overwritten by data sent from your client apps.
+
+```js
+// Create or update a company (companyId is your own immutable identifier).
+const company = await GleapAdmin.updateCompany('acme-inc', {
+  name: 'ACME inc.',
+  plan: 'Growth plan',
+  value: 4990,
+  sla: 3600, // Response-time SLA in seconds.
+  domain: 'acme.com',
+  address: { line1: '1 Infinite Loop', city: 'Cupertino', country: 'US' },
+  customData: { tier: 'gold' },
+});
+
+// Read a company (returns null if it doesn't exist).
+const existing = await GleapAdmin.getCompany('acme-inc');
+
+// Delete a company (its contacts and conversations are kept).
+const success = await GleapAdmin.deleteCompany('acme-inc');
+```
 
 ## License
 

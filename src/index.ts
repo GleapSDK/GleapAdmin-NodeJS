@@ -50,6 +50,56 @@ interface Company {
 	updatedAt?: string;
 }
 
+interface PipelineStage {
+	id: string;
+	name: string;
+	color?: string;
+}
+
+interface PipelineField {
+	fieldId: string;
+	label: string;
+	type: string;
+	currency?: string;
+}
+
+interface Pipeline {
+	id: string;
+	name: string;
+	recordType: 'COMPANY' | 'CONTACT';
+	stages: PipelineStage[];
+	fields: PipelineField[];
+	createdAt?: string;
+	updatedAt?: string;
+}
+
+// Identifies the record an entry belongs to, by YOUR identifiers: pass exactly
+// one of `companyId` (company pipelines) or `userId` (contact pipelines).
+interface PipelineEntryTarget {
+	companyId?: string;
+	userId?: string;
+}
+
+interface PipelineEntryProperties {
+	// A stage `id` from the pipeline's `stages` (see getPipelines()).
+	stageId?: string;
+	// Field values keyed by `fieldId` (see getPipelines()). Merged into the
+	// existing values; `null` clears a field. Primitive values only.
+	values?: Record<string, any>;
+}
+
+interface PipelineEntry {
+	id: string;
+	pipelineId: string;
+	recordType: 'COMPANY' | 'CONTACT';
+	companyId?: string;
+	userId?: string;
+	stageId: string | null;
+	values: Record<string, any>;
+	createdAt?: string;
+	updatedAt?: string;
+}
+
 interface Event {
 	userId: string;
 	name: string;
@@ -251,6 +301,218 @@ export class GleapAdmin {
 			return true;
 		} catch (exp) {
 			console.log('[Gleap] Failed to delete company', exp);
+			return false;
+		}
+	}
+
+	/**
+	 * Builds the entry route for a target. Entries are addressed by your own
+	 * identifiers — the `companyId` you pass to `updateCompany` for company
+	 * pipelines, the `userId` you pass to `identify` for contact pipelines —
+	 * so exactly one of the two must be set.
+	 */
+	private pipelineEntryPath(pipelineId: string, target: PipelineEntryTarget): string {
+		if (typeof pipelineId !== 'string' || pipelineId.length === 0) {
+			throw new TypeError('Please provide a valid pipelineId.');
+		}
+
+		const companyId = typeof target?.companyId === 'string' && target.companyId.length > 0 ? target.companyId : null;
+		const userId = typeof target?.userId === 'string' && target.userId.length > 0 ? target.userId : null;
+
+		const base = `/admin/pipelines/${encodeURIComponent(pipelineId)}`;
+		if (companyId !== null && userId === null) {
+			return `${base}/companies/${encodeURIComponent(companyId)}`;
+		}
+		if (userId !== null && companyId === null) {
+			return `${base}/contacts/${encodeURIComponent(userId)}`;
+		}
+
+		throw new TypeError('Please provide either a companyId or a userId.');
+	}
+
+	/**
+	 * Loads the project's pipelines with their stages and fields — everything
+	 * needed to pick a `pipelineId`, a `stageId` and valid `values` keys for
+	 * the entry calls below. Returns null if the request failed.
+	 */
+	async getPipelines(): Promise<Pipeline[] | null> {
+		try {
+			const { statusCode, data } = await httpsRequest({
+				hostname: this.apiUrl,
+				method: 'GET',
+				path: '/admin/pipelines',
+				headers: {
+					'Api-Token': `${this.apiToken}`,
+					'Content-Type': 'application/json',
+				},
+			});
+
+			if (statusCode < 200 || statusCode >= 300) {
+				throw new Error(`Unexpected status code ${statusCode}`);
+			}
+
+			return data as Pipeline[];
+		} catch (exp) {
+			console.log('[Gleap] Failed to load pipelines', exp);
+			return null;
+		}
+	}
+
+	/**
+	 * Adds a company or contact to a pipeline. Pass `stageId` to pick the stage
+	 * (defaults to the pipeline's first stage) and `values` to set initial
+	 * field values. If the record is already on the pipeline, the existing
+	 * entry is returned unchanged — adding is idempotent and never a hidden
+	 * update; use `updatePipelineEntry` to also change an existing entry.
+	 * A genuine add runs the pipeline's automations, exactly like the same
+	 * action in the dashboard.
+	 *
+	 * Returns the entry, or null if the request failed.
+	 */
+	async addPipelineEntry(
+		pipelineId: string,
+		entry: PipelineEntryTarget & PipelineEntryProperties,
+	): Promise<PipelineEntry | null> {
+		try {
+			const path = this.pipelineEntryPath(pipelineId, entry);
+
+			const body: PipelineEntryProperties = {};
+			if (entry?.stageId !== undefined) {
+				body.stageId = entry.stageId;
+			}
+			if (entry?.values !== undefined) {
+				body.values = entry.values;
+			}
+
+			const { statusCode, data } = await httpsRequest({
+				hostname: this.apiUrl,
+				method: 'POST',
+				path,
+				headers: {
+					'Api-Token': `${this.apiToken}`,
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify(body),
+			});
+
+			if (statusCode < 200 || statusCode >= 300) {
+				throw new Error(`Unexpected status code ${statusCode}`);
+			}
+
+			return data as PipelineEntry;
+		} catch (exp) {
+			console.log('[Gleap] Failed to add pipeline entry', exp);
+			return null;
+		}
+	}
+
+	/**
+	 * Creates or updates a pipeline entry (create-or-update, like
+	 * `updateCompany`): if the record is not on the pipeline it is added,
+	 * otherwise its entry is updated. Pass `stageId` to place or move the
+	 * entry (defaults to the first stage on create) and `values` to set field
+	 * values — values are merged, and `null` clears a field. Stage changes and
+	 * genuine adds run the pipeline's automations, exactly like the same
+	 * action in the dashboard.
+	 *
+	 * Returns the saved entry, or null if the request failed.
+	 */
+	async updatePipelineEntry(
+		pipelineId: string,
+		entry: PipelineEntryTarget & PipelineEntryProperties,
+	): Promise<PipelineEntry | null> {
+		try {
+			const path = this.pipelineEntryPath(pipelineId, entry);
+
+			const body: PipelineEntryProperties = {};
+			if (entry?.stageId !== undefined) {
+				body.stageId = entry.stageId;
+			}
+			if (entry?.values !== undefined) {
+				body.values = entry.values;
+			}
+
+			const { statusCode, data } = await httpsRequest({
+				hostname: this.apiUrl,
+				method: 'PUT',
+				path,
+				headers: {
+					'Api-Token': `${this.apiToken}`,
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify(body),
+			});
+
+			if (statusCode < 200 || statusCode >= 300) {
+				throw new Error(`Unexpected status code ${statusCode}`);
+			}
+
+			return data as PipelineEntry;
+		} catch (exp) {
+			console.log('[Gleap] Failed to update pipeline entry', exp);
+			return null;
+		}
+	}
+
+	/**
+	 * Loads a record's entry on a pipeline. Returns null if the record is not
+	 * on the pipeline or the request failed.
+	 */
+	async getPipelineEntry(pipelineId: string, target: PipelineEntryTarget): Promise<PipelineEntry | null> {
+		try {
+			const path = this.pipelineEntryPath(pipelineId, target);
+
+			const { statusCode, data } = await httpsRequest({
+				hostname: this.apiUrl,
+				method: 'GET',
+				path,
+				headers: {
+					'Api-Token': `${this.apiToken}`,
+					'Content-Type': 'application/json',
+				},
+			});
+
+			if (statusCode === 404) {
+				return null;
+			}
+
+			if (statusCode < 200 || statusCode >= 300) {
+				throw new Error(`Unexpected status code ${statusCode}`);
+			}
+
+			return data as PipelineEntry;
+		} catch (exp) {
+			console.log('[Gleap] Failed to load pipeline entry', exp);
+			return null;
+		}
+	}
+
+	/**
+	 * Removes a record from a pipeline. Only the pipeline membership is
+	 * deleted — the company or contact itself is untouched. Returns true on
+	 * success.
+	 */
+	async removePipelineEntry(pipelineId: string, target: PipelineEntryTarget): Promise<boolean> {
+		try {
+			const path = this.pipelineEntryPath(pipelineId, target);
+
+			const { statusCode } = await httpsRequest({
+				hostname: this.apiUrl,
+				method: 'DELETE',
+				path,
+				headers: {
+					'Api-Token': `${this.apiToken}`,
+					'Content-Type': 'application/json',
+				},
+			});
+
+			if (statusCode < 200 || statusCode >= 300) {
+				throw new Error(`Unexpected status code ${statusCode}`);
+			}
+
+			return true;
+		} catch (exp) {
+			console.log('[Gleap] Failed to remove pipeline entry', exp);
 			return false;
 		}
 	}

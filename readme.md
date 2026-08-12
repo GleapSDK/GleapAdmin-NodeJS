@@ -85,6 +85,53 @@ const existing = await GleapAdmin.getCompany('acme-inc');
 const success = await GleapAdmin.deleteCompany('acme-inc');
 ```
 
+### Pipelines (CRM)
+
+Manage CRM pipeline entries from your backend: put a company or contact on a
+pipeline, move it through stages, set field values, or remove it — for example
+to mirror your signup or billing lifecycle onto an onboarding pipeline.
+
+Entries are addressed by your own identifiers: the `companyId` you pass to
+`updateCompany` for company pipelines, or the `userId` you pass to `identify`
+for contact pipelines. Pipeline, stage and field ids come from `getPipelines`:
+
+```js
+// [{ id, name, recordType, stages: [{ id, name, color }], fields: [{ fieldId, label, type }] }]
+const pipelines = await GleapAdmin.getPipelines();
+```
+
+```js
+// Add a company to a pipeline. stageId defaults to the first stage; values
+// are keyed by fieldId. If the record is already on the pipeline, the
+// existing entry is returned unchanged (adding is idempotent).
+const entry = await GleapAdmin.addPipelineEntry("pipeline-id", {
+  companyId: "acme-inc",
+  stageId: "stage-id",
+  values: { dealsize: 4990 },
+});
+
+// Create-or-update (like updateCompany): adds the record, or moves it and
+// updates its values if it is already on the pipeline. Values are merged,
+// and null clears a field.
+await GleapAdmin.updatePipelineEntry("pipeline-id", {
+  companyId: "acme-inc",
+  stageId: "next-stage-id",
+});
+
+// Contact pipelines address entries by userId instead.
+await GleapAdmin.addPipelineEntry("pipeline-id", { userId: "user-1234" });
+
+// Read an entry (null if the record is not on the pipeline).
+const existing = await GleapAdmin.getPipelineEntry("pipeline-id", { companyId: "acme-inc" });
+
+// Remove a record from a pipeline (the company/contact itself is kept).
+const success = await GleapAdmin.removePipelineEntry("pipeline-id", { companyId: "acme-inc" });
+```
+
+Adding a record and moving it to a new stage run the pipeline's automations,
+exactly like the same action in the dashboard. Unknown stage ids and unknown
+field keys are rejected with a `400` naming the valid ids.
+
 ## Track MRR (customer value)
 
 Gleap uses the `value` field as a customer's MRR: **monthly recurring

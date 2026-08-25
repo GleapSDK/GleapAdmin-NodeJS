@@ -1,4 +1,4 @@
-import { httpsPost, httpsRequest } from './httpclient';
+import { post, request } from './httpclient';
 
 interface UserProperties {
 	name?: string;
@@ -107,12 +107,46 @@ interface Event {
 	data: any;
 }
 
+interface InitializeOptions {
+	// Base url of the Gleap API. See `GleapAdmin.apiUrl`.
+	apiUrl?: string;
+}
+
+const DEFAULT_API_URL = 'https://api.gleap.io';
+
+// Reduces an api url to the scheme, host and port the requests are sent to. A
+// bare hostname ("api.gleap.io") is read as HTTPS; a path is not part of the
+// endpoint and is dropped. An unusable url falls back to the public API rather
+// than throwing — the SDK must never take down the process that embeds it.
+const normalizeApiUrl = (apiUrl: string): string => {
+	const trimmed = typeof apiUrl === 'string' ? apiUrl.trim() : '';
+
+	if (trimmed.length === 0) {
+		return DEFAULT_API_URL;
+	}
+
+	try {
+		// Only "scheme://" counts as a scheme, so "some-host:9000" is still read
+		// as a host and a port rather than as a protocol.
+		const url = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+
+		if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+			throw new TypeError(`Unsupported protocol ${url.protocol}`);
+		}
+
+		return `${url.protocol}//${url.host}`;
+	} catch {
+		console.log(`[Gleap] Ignoring invalid apiUrl "${trimmed}", falling back to ${DEFAULT_API_URL}`);
+		return DEFAULT_API_URL;
+	}
+};
+
 export class GleapAdmin {
 	private static _instance = new GleapAdmin();
 
 	apiToken = '';
 
-	apiUrl = 'api.gleap.io';
+	private _apiUrl = DEFAULT_API_URL;
 
 	initialized = false;
 
@@ -124,6 +158,33 @@ export class GleapAdmin {
 
 	static get instance() {
 		return this._instance;
+	}
+
+	/**
+	 * Base url of the Gleap API — scheme, host and optional port. Defaults to
+	 * the public API and only needs to be set when Gleap is reached through a
+	 * different endpoint, e.g. an internal host inside your own network that
+	 * skips the round trip over the public internet. Plain HTTP is allowed for
+	 * such hosts.
+	 */
+	get apiUrl(): string {
+		return this._apiUrl;
+	}
+
+	set apiUrl(apiUrl: string) {
+		this._apiUrl = normalizeApiUrl(apiUrl);
+	}
+
+	// Connection options for a single request, derived from `apiUrl`. An empty
+	// port lets Node pick the default port for the scheme.
+	private endpoint() {
+		const url = new URL(this._apiUrl);
+
+		return {
+			protocol: url.protocol,
+			hostname: url.hostname,
+			port: url.port.length > 0 ? url.port : undefined,
+		};
 	}
 
 	trackEvent(userId: string, event: string, data?: any) {
@@ -178,8 +239,8 @@ export class GleapAdmin {
 				};
 			}
 
-			await httpsPost({
-				hostname: this.apiUrl,
+			await post({
+				...this.endpoint(),
 				path: '/admin/identify',
 				headers: {
 					'Api-Token': `${this.apiToken}`,
@@ -217,8 +278,8 @@ export class GleapAdmin {
 				throw new TypeError('Please provide a valid company properties object.');
 			}
 
-			const { statusCode, data } = await httpsRequest({
-				hostname: this.apiUrl,
+			const { statusCode, data } = await request({
+				...this.endpoint(),
 				method: 'PUT',
 				path: `/admin/companies/${encodeURIComponent(companyId)}`,
 				headers: {
@@ -249,8 +310,8 @@ export class GleapAdmin {
 				throw new TypeError('Please provide a valid companyId.');
 			}
 
-			const { statusCode, data } = await httpsRequest({
-				hostname: this.apiUrl,
+			const { statusCode, data } = await request({
+				...this.endpoint(),
 				method: 'GET',
 				path: `/admin/companies/${encodeURIComponent(companyId)}`,
 				headers: {
@@ -284,8 +345,8 @@ export class GleapAdmin {
 				throw new TypeError('Please provide a valid companyId.');
 			}
 
-			const { statusCode } = await httpsRequest({
-				hostname: this.apiUrl,
+			const { statusCode } = await request({
+				...this.endpoint(),
 				method: 'DELETE',
 				path: `/admin/companies/${encodeURIComponent(companyId)}`,
 				headers: {
@@ -337,8 +398,8 @@ export class GleapAdmin {
 	 */
 	async getPipelines(): Promise<Pipeline[] | null> {
 		try {
-			const { statusCode, data } = await httpsRequest({
-				hostname: this.apiUrl,
+			const { statusCode, data } = await request({
+				...this.endpoint(),
 				method: 'GET',
 				path: '/admin/pipelines',
 				headers: {
@@ -384,8 +445,8 @@ export class GleapAdmin {
 				body.values = entry.values;
 			}
 
-			const { statusCode, data } = await httpsRequest({
-				hostname: this.apiUrl,
+			const { statusCode, data } = await request({
+				...this.endpoint(),
 				method: 'POST',
 				path,
 				headers: {
@@ -432,8 +493,8 @@ export class GleapAdmin {
 				body.values = entry.values;
 			}
 
-			const { statusCode, data } = await httpsRequest({
-				hostname: this.apiUrl,
+			const { statusCode, data } = await request({
+				...this.endpoint(),
 				method: 'PUT',
 				path,
 				headers: {
@@ -462,8 +523,8 @@ export class GleapAdmin {
 		try {
 			const path = this.pipelineEntryPath(pipelineId, target);
 
-			const { statusCode, data } = await httpsRequest({
-				hostname: this.apiUrl,
+			const { statusCode, data } = await request({
+				...this.endpoint(),
 				method: 'GET',
 				path,
 				headers: {
@@ -496,8 +557,8 @@ export class GleapAdmin {
 		try {
 			const path = this.pipelineEntryPath(pipelineId, target);
 
-			const { statusCode } = await httpsRequest({
-				hostname: this.apiUrl,
+			const { statusCode } = await request({
+				...this.endpoint(),
 				method: 'DELETE',
 				path,
 				headers: {
@@ -527,8 +588,8 @@ export class GleapAdmin {
 					events: this.trackingCache,
 				});
 				this.trackingCache = [];
-				await httpsPost({
-					hostname: this.apiUrl,
+				await post({
+					...this.endpoint(),
 					path: '/admin/track',
 					headers: {
 						'Api-Token': `${this.apiToken}`,
@@ -542,10 +603,11 @@ export class GleapAdmin {
 		}
 	}
 
-	initialize(apiToken: string) {
+	initialize(apiToken: string, options: InitializeOptions = {}) {
 		this.stop();
 
 		this.apiToken = apiToken;
+		this.apiUrl = options.apiUrl ?? DEFAULT_API_URL;
 		this.initialized = true;
 		this.sendEventsInterval = setInterval(this.sendEvents.bind(this), 2500);
 	}

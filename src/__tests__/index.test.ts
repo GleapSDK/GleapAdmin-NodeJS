@@ -1,4 +1,4 @@
-import { httpsPost } from '../httpclient';
+import { post } from '../httpclient';
 import GleapAdmin from '../index';
 
 describe('GleapAdmin', () => {
@@ -44,7 +44,7 @@ describe('GleapAdmin', () => {
 
 describe('HttpHelper', () => {
   test('httpRequest', () => {
-    return httpsPost({
+    return post({
       hostname: 'dummyjson.com',
       headers: {
         'Content-Type': 'application/json',

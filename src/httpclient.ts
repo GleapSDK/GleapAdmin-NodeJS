@@ -1,14 +1,22 @@
+import * as http from 'http';
 import * as https from 'https';
 
-// Generic HTTPS request helper. Resolves with the parsed response body together
-// with its status code so callers can distinguish success from a 404 / error
+// Generic request helper. Resolves with the parsed response body together with
+// its status code so callers can distinguish success from a 404 / error
 // response. The body is parsed as JSON when possible, otherwise returned as a
 // string (falling back to the raw buffer).
-export const httpsRequest = ({ body, method = 'POST', ...options }: any): Promise<{ statusCode: number; data: any }> =>
+//
+// The transport follows the `protocol` option and defaults to HTTPS. Plain HTTP
+// is supported so the SDK can also talk to an internal endpoint that terminates
+// TLS elsewhere — see `GleapAdmin.apiUrl`.
+export const request = ({ body, method = 'POST', protocol = 'https:', ...options }: any): Promise<{ statusCode: number; data: any }> =>
     new Promise((resolve, reject) => {
-        const req = https.request(
+        const transport = protocol === 'http:' ? http : https;
+
+        const req = transport.request(
             {
                 method,
+                protocol,
                 ...options,
             },
             (res) => {
@@ -39,7 +47,7 @@ export const httpsRequest = ({ body, method = 'POST', ...options }: any): Promis
 
 // POST helper kept for existing callers. Resolves with the parsed response body
 // (not the status wrapper) to preserve its original contract.
-export const httpsPost = async (options: any) => {
-    const { data } = await httpsRequest({ ...options, method: 'POST' });
+export const post = async (options: any) => {
+    const { data } = await request({ ...options, method: 'POST' });
     return data;
 };

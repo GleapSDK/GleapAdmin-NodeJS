@@ -26,6 +26,16 @@ GleapAdmin.initialize(process.env.GLEAP_API_TOKEN);
 
 The secret API token can be found within your project settings -> Secret API token. Keep it in an environment variable; it must never ship to client apps.
 
+### Custom API endpoint
+
+Requests go to `https://api.gleap.io`. Pass `apiUrl` to send them somewhere else — an on-premise install, or an internal host that saves the round trip over the public internet. Plain HTTP is allowed for such hosts, and a port can be part of the url.
+
+```js
+GleapAdmin.initialize(process.env.GLEAP_API_TOKEN, {
+  apiUrl: 'http://your-gleap-host:9000',
+});
+```
+
 ### Track an event
 
 ```js

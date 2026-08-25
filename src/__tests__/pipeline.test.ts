@@ -1,10 +1,10 @@
-import { httpsRequest } from '../httpclient';
+import { request } from '../httpclient';
 import GleapAdmin from '../index';
 
 // Mock the network layer so these tests never hit the live API.
 jest.mock('../httpclient');
 
-const mockedRequest = httpsRequest as jest.MockedFunction<typeof httpsRequest>;
+const mockedRequest = request as jest.MockedFunction<typeof request>;
 
 describe('GleapAdmin pipelines', () => {
     beforeAll(() => {

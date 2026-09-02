@@ -20,7 +20,15 @@ describe('GleapAdmin pipelines', () => {
     });
 
     test('getPipelines GETs the pipeline list', async () => {
-        const pipelines = [{ id: 'p1', name: 'Onboarding', recordType: 'COMPANY', stages: [], fields: [] }];
+        const pipelines = [
+            {
+                id: 'p1',
+                name: 'Onboarding',
+                recordType: 'COMPANY',
+                stages: [],
+                fields: [{ fieldId: 'contract_value', label: 'Contract value', type: 'NUMBER', unit: 'EUR' }],
+            },
+        ];
         mockedRequest.mockResolvedValue({ statusCode: 200, data: pipelines });
 
         const result = await GleapAdmin.getPipelines();

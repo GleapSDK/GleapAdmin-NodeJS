@@ -106,7 +106,10 @@ Entries are addressed by your own identifiers: the `companyId` you pass to
 for contact pipelines. Pipeline, stage and field ids come from `getPipelines`:
 
 ```js
-// [{ id, name, recordType, stages: [{ id, name, color }], fields: [{ fieldId, label, type }] }]
+// [{ id, name, recordType, stages: [{ id, name, color }], fields: [{ fieldId, label, type, unit? }] }]
+// `fields` are the pipeline's entry fields — the keys `values` accepts. A pipeline
+// can also show company or contact attributes (e.g. the company's value); those are
+// set on the record itself via updateCompany / identify, not through the entry.
 const pipelines = await GleapAdmin.getPipelines();
 ```
 

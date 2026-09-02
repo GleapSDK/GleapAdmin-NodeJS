@@ -56,11 +56,16 @@ interface PipelineStage {
 	color?: string;
 }
 
+// The entry fields of a pipeline — the keys `values` accepts. Company /
+// contact attributes shown on the pipeline are not listed: set those through
+// updateCompany / identify. `unit` is how a number is displayed (an ISO-4217
+// code, '%', or a suffix such as 'seats').
 interface PipelineField {
 	fieldId: string;
 	label: string;
+	// TEXT or NUMBER for pipeline-created fields.
 	type: string;
-	currency?: string;
+	unit?: string;
 }
 
 interface Pipeline {

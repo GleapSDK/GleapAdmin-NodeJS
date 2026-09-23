@@ -1,4 +1,13 @@
 {
+  "keywords": [
+    "gleap",
+    "nodejs",
+    "sdk",
+    "customer-support",
+    "customer-data",
+    "event-tracking"
+  ],
+  "description": "Node.js admin SDK for Gleap: identify customers, track server-side events and update companies for customer support and feedback workflows.",
   "name": "gleap-admin",
   "version": "1.3.0",
   "scripts": {

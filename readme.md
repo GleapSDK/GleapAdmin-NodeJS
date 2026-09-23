@@ -1,5 +1,9 @@
 # Gleap Admin for NodeJS
 
+Node.js admin SDK for Gleap: identify customers, track server-side events and update companies for customer support and feedback workflows.
+
+[Node.js documentation](https://docs.gleap.ai/documentation/server/nodejs) · [Gleap](https://www.gleap.ai)
+
 This package allows you to track customer events from the server side.
 
 ## Installation

@@ -1,93 +1,95 @@
-import { request } from '../httpclient';
+import assert from 'node:assert/strict';
+import { after, beforeEach, describe, test } from 'node:test';
+
 import GleapAdmin from '../index';
+import { fakeGleapApi } from './support/fakeGleapApi';
 
-// Mock the network layer so these tests never hit the live API.
-jest.mock('../httpclient');
-
-const mockedRequest = request as jest.MockedFunction<typeof request>;
+// The Gleap API is faked at Node's http boundary, so these tests never hit the live API.
+const api = fakeGleapApi();
+after(() => api.restore());
 
 // Connection options of the last request the SDK issued.
 const lastEndpoint = () => {
-  const { protocol, hostname, port } = mockedRequest.mock.calls[0][0];
-  return { protocol, hostname, port };
+	const { protocol, hostname, port } = api.requests[0];
+	return { protocol, hostname, port };
 };
 
 describe('GleapAdmin apiUrl', () => {
-  afterAll(() => {
-    GleapAdmin.stop();
-  });
+	after(() => {
+		GleapAdmin.stop();
+	});
 
-  beforeEach(() => {
-    mockedRequest.mockReset();
-    mockedRequest.mockResolvedValue({ statusCode: 200, data: [] });
-  });
+	beforeEach(() => {
+		api.reset();
+		api.respondWith(200, []);
+	});
 
-  test('requests go to the public API by default', async () => {
-    GleapAdmin.initialize('test-token');
+	test('requests go to the public API by default', async () => {
+		GleapAdmin.initialize('test-token');
 
-    expect(GleapAdmin.apiUrl).toBe('https://api.gleap.io');
+		assert.equal(GleapAdmin.apiUrl, 'https://api.gleap.io');
 
-    await GleapAdmin.getPipelines();
-    expect(lastEndpoint()).toEqual({ protocol: 'https:', hostname: 'api.gleap.io', port: undefined });
-  });
+		await GleapAdmin.getPipelines();
+		assert.deepEqual(lastEndpoint(), { protocol: 'https:', hostname: 'api.gleap.io', port: undefined });
+	});
 
-  test('an http api url with a port is used as given', async () => {
-    GleapAdmin.initialize('test-token', { apiUrl: 'http://internal-host:9000' });
+	test('an http api url with a port is used as given', async () => {
+		GleapAdmin.initialize('test-token', { apiUrl: 'http://internal-host:9000' });
 
-    expect(GleapAdmin.apiUrl).toBe('http://internal-host:9000');
+		assert.equal(GleapAdmin.apiUrl, 'http://internal-host:9000');
 
-    await GleapAdmin.getPipelines();
-    expect(lastEndpoint()).toEqual({ protocol: 'http:', hostname: 'internal-host', port: '9000' });
-  });
+		await GleapAdmin.getPipelines();
+		assert.deepEqual(lastEndpoint(), { protocol: 'http:', hostname: 'internal-host', port: '9000' });
+	});
 
-  test('a bare hostname means the public HTTPS API', () => {
-    GleapAdmin.initialize('test-token', { apiUrl: 'api.eu.gleap.io' });
+	test('a bare hostname means the public HTTPS API', () => {
+		GleapAdmin.initialize('test-token', { apiUrl: 'api.eu.gleap.io' });
 
-    expect(GleapAdmin.apiUrl).toBe('https://api.eu.gleap.io');
-  });
+		assert.equal(GleapAdmin.apiUrl, 'https://api.eu.gleap.io');
+	});
 
-  test('a trailing slash and a path are not part of the endpoint', () => {
-    GleapAdmin.initialize('test-token', { apiUrl: 'https://api.gleap.io/' });
-    expect(GleapAdmin.apiUrl).toBe('https://api.gleap.io');
+	test('a trailing slash and a path are not part of the endpoint', () => {
+		GleapAdmin.initialize('test-token', { apiUrl: 'https://api.gleap.io/' });
+		assert.equal(GleapAdmin.apiUrl, 'https://api.gleap.io');
 
-    GleapAdmin.apiUrl = 'http://internal-host:9000/admin';
-    expect(GleapAdmin.apiUrl).toBe('http://internal-host:9000');
-  });
+		GleapAdmin.apiUrl = 'http://internal-host:9000/admin';
+		assert.equal(GleapAdmin.apiUrl, 'http://internal-host:9000');
+	});
 
-  test('re-initializing without an api url returns to the public API', () => {
-    GleapAdmin.initialize('test-token', { apiUrl: 'http://internal-host:9000' });
-    GleapAdmin.initialize('test-token');
+	test('re-initializing without an api url returns to the public API', () => {
+		GleapAdmin.initialize('test-token', { apiUrl: 'http://internal-host:9000' });
+		GleapAdmin.initialize('test-token');
 
-    expect(GleapAdmin.apiUrl).toBe('https://api.gleap.io');
-  });
+		assert.equal(GleapAdmin.apiUrl, 'https://api.gleap.io');
+	});
 
-  test('an empty api url falls back to the public API', () => {
-    GleapAdmin.initialize('test-token', { apiUrl: '  ' });
+	test('an empty api url falls back to the public API', () => {
+		GleapAdmin.initialize('test-token', { apiUrl: '  ' });
 
-    expect(GleapAdmin.apiUrl).toBe('https://api.gleap.io');
-  });
+		assert.equal(GleapAdmin.apiUrl, 'https://api.gleap.io');
+	});
 });
 
 describe('GleapAdmin apiUrl fallback', () => {
-  afterAll(() => {
-    GleapAdmin.stop();
-  });
+	after(() => {
+		GleapAdmin.stop();
+	});
 
-  test('an unparsable api url falls back to the public API instead of throwing', () => {
-    GleapAdmin.initialize('test-token', { apiUrl: 'http://' });
+	test('an unparsable api url falls back to the public API instead of throwing', () => {
+		GleapAdmin.initialize('test-token', { apiUrl: 'http://' });
 
-    expect(GleapAdmin.apiUrl).toBe('https://api.gleap.io');
-  });
+		assert.equal(GleapAdmin.apiUrl, 'https://api.gleap.io');
+	});
 
-  test('a protocol the SDK cannot speak falls back to the public API', () => {
-    GleapAdmin.initialize('test-token', { apiUrl: 'ftp://files.gleap.io' });
+	test('a protocol the SDK cannot speak falls back to the public API', () => {
+		GleapAdmin.initialize('test-token', { apiUrl: 'ftp://files.gleap.io' });
 
-    expect(GleapAdmin.apiUrl).toBe('https://api.gleap.io');
-  });
+		assert.equal(GleapAdmin.apiUrl, 'https://api.gleap.io');
+	});
 
-  test('a host that looks like a scheme keeps its port', () => {
-    GleapAdmin.initialize('test-token', { apiUrl: 'internal-host:9000' });
+	test('a host that looks like a scheme keeps its port', () => {
+		GleapAdmin.initialize('test-token', { apiUrl: 'internal-host:9000' });
 
-    expect(GleapAdmin.apiUrl).toBe('https://internal-host:9000');
-  });
+		assert.equal(GleapAdmin.apiUrl, 'https://internal-host:9000');
+	});
 });

@@ -1,150 +1,152 @@
-import { request } from '../httpclient';
+import assert from 'node:assert/strict';
+import { after, before, beforeEach, describe, test } from 'node:test';
+
 import GleapAdmin from '../index';
+import { fakeGleapApi } from './support/fakeGleapApi';
 
-// Mock the network layer so these tests never hit the live API.
-jest.mock('../httpclient');
-
-const mockedRequest = request as jest.MockedFunction<typeof request>;
+// The Gleap API is faked at Node's http boundary, so these tests never hit the live API.
+const api = fakeGleapApi();
+after(() => api.restore());
 
 describe('GleapAdmin pipelines', () => {
-    beforeAll(() => {
-        GleapAdmin.initialize('test-token');
-    });
+	before(() => {
+		GleapAdmin.initialize('test-token');
+	});
 
-    afterAll(() => {
-        GleapAdmin.stop();
-    });
+	after(() => {
+		GleapAdmin.stop();
+	});
 
-    beforeEach(() => {
-        mockedRequest.mockReset();
-    });
+	beforeEach(() => {
+		api.reset();
+	});
 
-    test('getPipelines GETs the pipeline list', async () => {
-        const pipelines = [{ id: 'p1', name: 'Onboarding', recordType: 'COMPANY', stages: [], fields: [] }];
-        mockedRequest.mockResolvedValue({ statusCode: 200, data: pipelines });
+	test('getPipelines GETs the pipeline list', async () => {
+		const pipelines = [{ id: 'p1', name: 'Onboarding', recordType: 'COMPANY', stages: [], fields: [] }];
+		api.respondWith(200, pipelines);
 
-        const result = await GleapAdmin.getPipelines();
+		const result = await GleapAdmin.getPipelines();
 
-        expect(mockedRequest).toHaveBeenCalledTimes(1);
-        const arg = mockedRequest.mock.calls[0][0];
-        expect(arg.method).toBe('GET');
-        expect(arg.path).toBe('/admin/pipelines');
-        expect(arg.headers['Api-Token']).toBe('test-token');
-        expect(result).toEqual(pipelines);
-    });
+		assert.equal(api.requests.length, 1);
+		const arg = api.requests[0];
+		assert.equal(arg.method, 'GET');
+		assert.equal(arg.path, '/admin/pipelines');
+		assert.equal(arg.headers['Api-Token'], 'test-token');
+		assert.deepEqual(result, pipelines);
+	});
 
-    test('getPipelines returns null on a non-2xx response', async () => {
-        mockedRequest.mockResolvedValue({ statusCode: 500, data: {} });
-        expect(await GleapAdmin.getPipelines()).toBeNull();
-    });
+	test('getPipelines returns null on a non-2xx response', async () => {
+		api.respondWith(500, {});
+		assert.equal(await GleapAdmin.getPipelines(), null);
+	});
 
-    test('addPipelineEntry POSTs to the company entry route', async () => {
-        const entry = { id: 'e1', pipelineId: 'p1', companyId: 'acme', stageId: 's1', values: {} };
-        mockedRequest.mockResolvedValue({ statusCode: 201, data: entry });
+	test('addPipelineEntry POSTs to the company entry route', async () => {
+		const entry = { id: 'e1', pipelineId: 'p1', companyId: 'acme', stageId: 's1', values: {} };
+		api.respondWith(201, entry);
 
-        const result = await GleapAdmin.addPipelineEntry('p1', { companyId: 'acme', stageId: 's1' });
+		const result = await GleapAdmin.addPipelineEntry('p1', { companyId: 'acme', stageId: 's1' });
 
-        const arg = mockedRequest.mock.calls[0][0];
-        expect(arg.method).toBe('POST');
-        expect(arg.path).toBe('/admin/pipelines/p1/companies/acme');
-        expect(JSON.parse(arg.body)).toEqual({ stageId: 's1' });
-        expect(result).toEqual(entry);
-    });
+		const arg = api.requests[0];
+		assert.equal(arg.method, 'POST');
+		assert.equal(arg.path, '/admin/pipelines/p1/companies/acme');
+		assert.deepEqual(JSON.parse(arg.body ?? ''), { stageId: 's1' });
+		assert.deepEqual(result, entry);
+	});
 
-    test('addPipelineEntry routes a userId target to the contact entry route', async () => {
-        mockedRequest.mockResolvedValue({ statusCode: 201, data: {} });
+	test('addPipelineEntry routes a userId target to the contact entry route', async () => {
+		api.respondWith(201, {});
 
-        await GleapAdmin.addPipelineEntry('p1', { userId: 'user-1', values: { plan: 'pro' } });
+		await GleapAdmin.addPipelineEntry('p1', { userId: 'user-1', values: { plan: 'pro' } });
 
-        const arg = mockedRequest.mock.calls[0][0];
-        expect(arg.method).toBe('POST');
-        expect(arg.path).toBe('/admin/pipelines/p1/contacts/user-1');
-        expect(JSON.parse(arg.body)).toEqual({ values: { plan: 'pro' } });
-    });
+		const arg = api.requests[0];
+		assert.equal(arg.method, 'POST');
+		assert.equal(arg.path, '/admin/pipelines/p1/contacts/user-1');
+		assert.deepEqual(JSON.parse(arg.body ?? ''), { values: { plan: 'pro' } });
+	});
 
-    test('addPipelineEntry returns null on a non-2xx response', async () => {
-        mockedRequest.mockResolvedValue({ statusCode: 404, data: { message: 'Company not found' } });
-        expect(await GleapAdmin.addPipelineEntry('p1', { companyId: 'missing' })).toBeNull();
-    });
+	test('addPipelineEntry returns null on a non-2xx response', async () => {
+		api.respondWith(404, { message: 'Company not found' });
+		assert.equal(await GleapAdmin.addPipelineEntry('p1', { companyId: 'missing' }), null);
+	});
 
-    test('updatePipelineEntry PUTs to the company entry route', async () => {
-        const entry = { id: 'e1', pipelineId: 'p1', companyId: 'acme', stageId: 's2', values: { mrr: 499 } };
-        mockedRequest.mockResolvedValue({ statusCode: 200, data: entry });
+	test('updatePipelineEntry PUTs to the company entry route', async () => {
+		const entry = { id: 'e1', pipelineId: 'p1', companyId: 'acme', stageId: 's2', values: { mrr: 499 } };
+		api.respondWith(200, entry);
 
-        const result = await GleapAdmin.updatePipelineEntry('p1', {
-            companyId: 'acme',
-            stageId: 's2',
-            values: { mrr: 499 },
-        });
+		const result = await GleapAdmin.updatePipelineEntry('p1', {
+			companyId: 'acme',
+			stageId: 's2',
+			values: { mrr: 499 },
+		});
 
-        const arg = mockedRequest.mock.calls[0][0];
-        expect(arg.method).toBe('PUT');
-        expect(arg.path).toBe('/admin/pipelines/p1/companies/acme');
-        expect(JSON.parse(arg.body)).toEqual({ stageId: 's2', values: { mrr: 499 } });
-        expect(result).toEqual(entry);
-    });
+		const arg = api.requests[0];
+		assert.equal(arg.method, 'PUT');
+		assert.equal(arg.path, '/admin/pipelines/p1/companies/acme');
+		assert.deepEqual(JSON.parse(arg.body ?? ''), { stageId: 's2', values: { mrr: 499 } });
+		assert.deepEqual(result, entry);
+	});
 
-    test('updatePipelineEntry routes a userId target to the contact entry route', async () => {
-        mockedRequest.mockResolvedValue({ statusCode: 200, data: {} });
+	test('updatePipelineEntry routes a userId target to the contact entry route', async () => {
+		api.respondWith(200, {});
 
-        await GleapAdmin.updatePipelineEntry('p1', { userId: 'user-1', stageId: 's1' });
+		await GleapAdmin.updatePipelineEntry('p1', { userId: 'user-1', stageId: 's1' });
 
-        const arg = mockedRequest.mock.calls[0][0];
-        expect(arg.path).toBe('/admin/pipelines/p1/contacts/user-1');
-        expect(JSON.parse(arg.body)).toEqual({ stageId: 's1' });
-    });
+		const arg = api.requests[0];
+		assert.equal(arg.path, '/admin/pipelines/p1/contacts/user-1');
+		assert.deepEqual(JSON.parse(arg.body ?? ''), { stageId: 's1' });
+	});
 
-    test('updatePipelineEntry url-encodes the pipelineId and target id', async () => {
-        mockedRequest.mockResolvedValue({ statusCode: 200, data: {} });
+	test('updatePipelineEntry url-encodes the pipelineId and target id', async () => {
+		api.respondWith(200, {});
 
-        await GleapAdmin.updatePipelineEntry('p 1', { companyId: 'acme/inc' });
+		await GleapAdmin.updatePipelineEntry('p 1', { companyId: 'acme/inc' });
 
-        expect(mockedRequest.mock.calls[0][0].path).toBe('/admin/pipelines/p%201/companies/acme%2Finc');
-    });
+		assert.equal(api.requests[0].path, '/admin/pipelines/p%201/companies/acme%2Finc');
+	});
 
-    test('updatePipelineEntry omits unset stageId/values from the body', async () => {
-        mockedRequest.mockResolvedValue({ statusCode: 200, data: {} });
+	test('updatePipelineEntry omits unset stageId/values from the body', async () => {
+		api.respondWith(200, {});
 
-        await GleapAdmin.updatePipelineEntry('p1', { companyId: 'acme' });
+		await GleapAdmin.updatePipelineEntry('p1', { companyId: 'acme' });
 
-        expect(JSON.parse(mockedRequest.mock.calls[0][0].body)).toEqual({});
-    });
+		assert.deepEqual(JSON.parse(api.requests[0].body ?? ''), {});
+	});
 
-    test('updatePipelineEntry returns null on a non-2xx response', async () => {
-        mockedRequest.mockResolvedValue({ statusCode: 400, data: { message: 'Unknown stage' } });
-        expect(await GleapAdmin.updatePipelineEntry('p1', { companyId: 'acme', stageId: 'nope' })).toBeNull();
-    });
+	test('updatePipelineEntry returns null on a non-2xx response', async () => {
+		api.respondWith(400, { message: 'Unknown stage' });
+		assert.equal(await GleapAdmin.updatePipelineEntry('p1', { companyId: 'acme', stageId: 'nope' }), null);
+	});
 
-    test('getPipelineEntry returns the entry on 200 and null on 404', async () => {
-        mockedRequest.mockResolvedValue({ statusCode: 200, data: { id: 'e1' } });
-        expect(await GleapAdmin.getPipelineEntry('p1', { companyId: 'acme' })).toEqual({ id: 'e1' });
-        expect(mockedRequest.mock.calls[0][0].method).toBe('GET');
+	test('getPipelineEntry returns the entry on 200 and null on 404', async () => {
+		api.respondWith(200, { id: 'e1' });
+		assert.deepEqual(await GleapAdmin.getPipelineEntry('p1', { companyId: 'acme' }), { id: 'e1' });
+		assert.equal(api.requests[0].method, 'GET');
 
-        mockedRequest.mockResolvedValue({ statusCode: 404, data: { message: 'Record is not on this pipeline' } });
-        expect(await GleapAdmin.getPipelineEntry('p1', { companyId: 'acme' })).toBeNull();
-    });
+		api.respondWith(404, { message: 'Record is not on this pipeline' });
+		assert.equal(await GleapAdmin.getPipelineEntry('p1', { companyId: 'acme' }), null);
+	});
 
-    test('removePipelineEntry returns true on success and false on error', async () => {
-        mockedRequest.mockResolvedValue({ statusCode: 200, data: {} });
-        expect(await GleapAdmin.removePipelineEntry('p1', { userId: 'user-1' })).toBe(true);
-        const arg = mockedRequest.mock.calls[0][0];
-        expect(arg.method).toBe('DELETE');
-        expect(arg.path).toBe('/admin/pipelines/p1/contacts/user-1');
+	test('removePipelineEntry returns true on success and false on error', async () => {
+		api.respondWith(200, {});
+		assert.equal(await GleapAdmin.removePipelineEntry('p1', { userId: 'user-1' }), true);
+		const arg = api.requests[0];
+		assert.equal(arg.method, 'DELETE');
+		assert.equal(arg.path, '/admin/pipelines/p1/contacts/user-1');
 
-        mockedRequest.mockResolvedValue({ statusCode: 500, data: {} });
-        expect(await GleapAdmin.removePipelineEntry('p1', { userId: 'user-1' })).toBe(false);
-    });
+		api.respondWith(500, {});
+		assert.equal(await GleapAdmin.removePipelineEntry('p1', { userId: 'user-1' }), false);
+	});
 
-    test('an invalid target never issues a request', async () => {
-        // Neither companyId nor userId.
-        expect(await GleapAdmin.addPipelineEntry('p1', {})).toBeNull();
-        expect(await GleapAdmin.updatePipelineEntry('p1', {})).toBeNull();
-        // Both at once is ambiguous.
-        expect(await GleapAdmin.updatePipelineEntry('p1', { companyId: 'acme', userId: 'user-1' })).toBeNull();
-        // Missing pipelineId.
-        expect(await GleapAdmin.addPipelineEntry('', { companyId: 'acme' })).toBeNull();
-        expect(await GleapAdmin.getPipelineEntry('', { companyId: 'acme' })).toBeNull();
-        expect(await GleapAdmin.removePipelineEntry('', { userId: 'user-1' })).toBe(false);
-        expect(mockedRequest).not.toHaveBeenCalled();
-    });
+	test('an invalid target never issues a request', async () => {
+		// Neither companyId nor userId.
+		assert.equal(await GleapAdmin.addPipelineEntry('p1', {}), null);
+		assert.equal(await GleapAdmin.updatePipelineEntry('p1', {}), null);
+		// Both at once is ambiguous.
+		assert.equal(await GleapAdmin.updatePipelineEntry('p1', { companyId: 'acme', userId: 'user-1' }), null);
+		// Missing pipelineId.
+		assert.equal(await GleapAdmin.addPipelineEntry('', { companyId: 'acme' }), null);
+		assert.equal(await GleapAdmin.getPipelineEntry('', { companyId: 'acme' }), null);
+		assert.equal(await GleapAdmin.removePipelineEntry('', { userId: 'user-1' }), false);
+		assert.equal(api.requests.length, 0);
+	});
 });

@@ -1,0 +1,67 @@
+name: CI
+
+# Typecheck, lint, every test with coverage of src/ and its floors, the build and what npm would publish, the tests on
+# the other supported LTS lines, and the quality check's own tests. No path filter: a check that never reports cannot
+# be required.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    # Install, typecheck, lint, tests, build and the quality check's tests take about two minutes.
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test:coverage
+      # --ignore-scripts skips prebuild: the typecheck, lint and tests already ran above.
+      - run: npm run build --ignore-scripts
+      # A release publishes exactly this list; anything else under src/ or the repo root must not ship.
+      - name: Check what npm would publish
+        run: |
+          npm pack --dry-run --json --ignore-scripts | node -e '
+            const chunks = [];
+            process.stdin.on("data", (chunk) => chunks.push(chunk)).on("end", () => {
+              const files = JSON.parse(Buffer.concat(chunks))[0].files.map(({ path }) => path).sort();
+              const unexpected = files.filter((path) => !/^(dist\/.+|package\.json|readme\.md)$/.test(path));
+              const missing = ["dist/index.js", "dist/index.d.ts", "dist/httpclient.js"].filter((path) => !files.includes(path));
+              console.log(files.join("\n"));
+              if (unexpected.length || missing.length) {
+                console.error(`Unexpected: ${unexpected.join(", ") || "none"}. Missing: ${missing.join(", ") || "none"}.`);
+                process.exit(1);
+              }
+            });'
+      - run: npm run test:quality
+
+  node-versions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        # The LTS lines next to .nvmrc's. engines still allows 18 and 20, which are end-of-life and not tested here.
+        node: [22, 26]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm test

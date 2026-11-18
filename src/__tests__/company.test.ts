@@ -1,116 +1,116 @@
-import { post, request } from '../httpclient';
+import assert from 'node:assert/strict';
+import { after, before, beforeEach, describe, test } from 'node:test';
+
 import GleapAdmin from '../index';
+import { fakeGleapApi } from './support/fakeGleapApi';
 
-// Mock the network layer so these tests never hit the live API.
-jest.mock('../httpclient');
-
-const mockedRequest = request as jest.MockedFunction<typeof request>;
-const mockedPost = post as jest.MockedFunction<typeof post>;
+// The Gleap API is faked at Node's http boundary, so these tests never hit the live API.
+const api = fakeGleapApi();
+after(() => api.restore());
 
 describe('GleapAdmin companies', () => {
-  beforeAll(() => {
-    GleapAdmin.initialize('test-token');
-  });
+	before(() => {
+		GleapAdmin.initialize('test-token');
+	});
 
-  afterAll(() => {
-    GleapAdmin.stop();
-  });
+	after(() => {
+		GleapAdmin.stop();
+	});
 
-  beforeEach(() => {
-    mockedRequest.mockReset();
-  });
+	beforeEach(() => {
+		api.reset();
+	});
 
-  test('updateCompany PUTs whitelisted attributes to the company endpoint', async () => {
-    mockedRequest.mockResolvedValue({ statusCode: 200, data: { companyId: 'acme', name: 'Acme' } });
+	test('updateCompany PUTs whitelisted attributes to the company endpoint', async () => {
+		api.respondWith(200, { companyId: 'acme', name: 'Acme' });
 
-    const company = await GleapAdmin.updateCompany('acme', { name: 'Acme', plan: 'pro', sla: 3600 });
+		const company = await GleapAdmin.updateCompany('acme', { name: 'Acme', plan: 'pro', sla: 3600 });
 
-    expect(mockedRequest).toHaveBeenCalledTimes(1);
-    const arg = mockedRequest.mock.calls[0][0];
-    expect(arg.method).toBe('PUT');
-    expect(arg.path).toBe('/admin/companies/acme');
-    expect(arg.headers['Api-Token']).toBe('test-token');
-    expect(JSON.parse(arg.body)).toEqual({ name: 'Acme', plan: 'pro', sla: 3600 });
-    expect(company).toEqual({ companyId: 'acme', name: 'Acme' });
-  });
+		assert.equal(api.requests.length, 1);
+		const arg = api.requests[0];
+		assert.equal(arg.method, 'PUT');
+		assert.equal(arg.path, '/admin/companies/acme');
+		assert.equal(arg.headers['Api-Token'], 'test-token');
+		assert.deepEqual(JSON.parse(arg.body ?? ''), { name: 'Acme', plan: 'pro', sla: 3600 });
+		assert.deepEqual(company, { companyId: 'acme', name: 'Acme' });
+	});
 
-  test('updateCompany url-encodes the companyId', async () => {
-    mockedRequest.mockResolvedValue({ statusCode: 200, data: {} });
+	test('updateCompany url-encodes the companyId', async () => {
+		api.respondWith(200, {});
 
-    await GleapAdmin.updateCompany('acme/inc corp', { plan: 'x' });
+		await GleapAdmin.updateCompany('acme/inc corp', { plan: 'x' });
 
-    expect(mockedRequest.mock.calls[0][0].path).toBe('/admin/companies/acme%2Finc%20corp');
-  });
+		assert.equal(api.requests[0].path, '/admin/companies/acme%2Finc%20corp');
+	});
 
-  test('updateCompany returns null on a non-2xx response', async () => {
-    mockedRequest.mockResolvedValue({ statusCode: 500, data: {} });
-    expect(await GleapAdmin.updateCompany('acme', { plan: 'x' })).toBeNull();
-  });
+	test('updateCompany returns null on a non-2xx response', async () => {
+		api.respondWith(500, {});
+		assert.equal(await GleapAdmin.updateCompany('acme', { plan: 'x' }), null);
+	});
 
-  test('getCompany returns the company on 200', async () => {
-    mockedRequest.mockResolvedValue({ statusCode: 200, data: { companyId: 'acme' } });
+	test('getCompany returns the company on 200', async () => {
+		api.respondWith(200, { companyId: 'acme' });
 
-    const company = await GleapAdmin.getCompany('acme');
+		const company = await GleapAdmin.getCompany('acme');
 
-    expect(mockedRequest.mock.calls[0][0].method).toBe('GET');
-    expect(company).toEqual({ companyId: 'acme' });
-  });
+		assert.equal(api.requests[0].method, 'GET');
+		assert.deepEqual(company, { companyId: 'acme' });
+	});
 
-  test('getCompany returns null on 404', async () => {
-    mockedRequest.mockResolvedValue({ statusCode: 404, data: { message: 'Company not found' } });
-    expect(await GleapAdmin.getCompany('missing')).toBeNull();
-  });
+	test('getCompany returns null on 404', async () => {
+		api.respondWith(404, { message: 'Company not found' });
+		assert.equal(await GleapAdmin.getCompany('missing'), null);
+	});
 
-  test('deleteCompany returns true on success and false on error', async () => {
-    mockedRequest.mockResolvedValue({ statusCode: 200, data: {} });
-    expect(await GleapAdmin.deleteCompany('acme')).toBe(true);
-    expect(mockedRequest.mock.calls[0][0].method).toBe('DELETE');
+	test('deleteCompany returns true on success and false on error', async () => {
+		api.respondWith(200, {});
+		assert.equal(await GleapAdmin.deleteCompany('acme'), true);
+		assert.equal(api.requests[0].method, 'DELETE');
 
-    mockedRequest.mockResolvedValue({ statusCode: 500, data: {} });
-    expect(await GleapAdmin.deleteCompany('acme')).toBe(false);
-  });
+		api.respondWith(500, {});
+		assert.equal(await GleapAdmin.deleteCompany('acme'), false);
+	});
 
-  test('an empty companyId never issues a request', async () => {
-    expect(await GleapAdmin.updateCompany('', { name: 'x' })).toBeNull();
-    expect(await GleapAdmin.getCompany('')).toBeNull();
-    expect(await GleapAdmin.deleteCompany('')).toBe(false);
-    expect(mockedRequest).not.toHaveBeenCalled();
-  });
+	test('an empty companyId never issues a request', async () => {
+		assert.equal(await GleapAdmin.updateCompany('', { name: 'x' }), null);
+		assert.equal(await GleapAdmin.getCompany(''), null);
+		assert.equal(await GleapAdmin.deleteCompany(''), false);
+		assert.equal(api.requests.length, 0);
+	});
 });
 
 describe('GleapAdmin identify company association', () => {
-  beforeAll(() => {
-    GleapAdmin.initialize('test-token');
-  });
+	before(() => {
+		GleapAdmin.initialize('test-token');
+	});
 
-  afterAll(() => {
-    GleapAdmin.stop();
-  });
+	after(() => {
+		GleapAdmin.stop();
+	});
 
-  beforeEach(() => {
-    mockedPost.mockReset();
-    mockedPost.mockResolvedValue(undefined as any);
-  });
+	beforeEach(() => {
+		api.reset();
+	});
 
-  test('identify flattens company { id, name } to companyId / companyName', async () => {
-    await GleapAdmin.identify('user-1', {
-      name: 'John Doe',
-      company: { id: 'acme', name: 'Acme Inc.' },
-    });
+	test('identify flattens company { id, name } to companyId / companyName', async () => {
+		await GleapAdmin.identify('user-1', {
+			name: 'John Doe',
+			company: { id: 'acme', name: 'Acme Inc.' },
+		});
 
-    const body = JSON.parse(mockedPost.mock.calls[0][0].body);
-    expect(body.companyId).toBe('acme');
-    expect(body.companyName).toBe('Acme Inc.');
-    expect(body.company).toBeUndefined();
-    expect(body.userId).toBe('user-1');
-    expect(body.name).toBe('John Doe');
-  });
+		const body = JSON.parse(api.requests[0].body ?? '');
+		assert.equal(body.companyId, 'acme');
+		assert.equal(body.companyName, 'Acme Inc.');
+		assert.equal(body.company, undefined);
+		assert.equal(body.userId, 'user-1');
+		assert.equal(body.name, 'John Doe');
+	});
 
-  test('identify omits company fields when no association is given', async () => {
-    await GleapAdmin.identify('user-2', { email: 'john@doe.io' });
+	test('identify omits company fields when no association is given', async () => {
+		await GleapAdmin.identify('user-2', { email: 'john@doe.io' });
 
-    const body = JSON.parse(mockedPost.mock.calls[0][0].body);
-    expect(body.companyId).toBeUndefined();
-    expect(body.companyName).toBeUndefined();
-  });
+		const body = JSON.parse(api.requests[0].body ?? '');
+		assert.equal(body.companyId, undefined);
+		assert.equal(body.companyName, undefined);
+	});
 });
